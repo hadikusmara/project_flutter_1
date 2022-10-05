@@ -1,11 +1,11 @@
 {
-    "name": "platform_design",
-    "short_name": "platform_design",
+    "name": "form_app",
+    "short_name": "form_app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A project showcasing a Flutter app following different platform IA conventions.",
+    "description": "A sample demonstrating different types of forms and best practices",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

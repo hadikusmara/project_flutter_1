@@ -1,200 +1,118 @@
-// Copyright 2020 The Flutter team. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+// Copyright 2020, the Flutter project authors. Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// BSD-style license that can be found in the LICENSE file.
 
-import 'package:flutter/cupertino.dart';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:window_size/window_size.dart';
 
-import 'news_tab.dart';
-import 'profile_tab.dart';
-import 'settings_tab.dart';
-import 'songs_tab.dart';
-import 'widgets.dart';
+import 'src/autofill.dart';
+import 'src/form_widgets.dart';
+import 'src/http/mock_client.dart';
+import 'src/sign_in_http.dart';
+import 'src/validation.dart';
 
-void main() => runApp(const MyAdaptingApp());
+void main() {
+  setupWindow();
+  runApp(const FormApp());
+}
 
-class MyAdaptingApp extends StatelessWidget {
-  const MyAdaptingApp({super.key});
+const double windowWidth = 480;
+const double windowHeight = 854;
 
-  @override
-  Widget build(context) {
-    // Either Material or Cupertino widgets work in either Material or Cupertino
-    // Apps.
-    return MaterialApp(
-      title: 'Adaptive Music App',
-      theme: ThemeData(
-        // Use the green theme for Material widgets.
-        primarySwatch: Colors.green,
-      ),
-      darkTheme: ThemeData.dark(),
-      builder: (context, child) {
-        return CupertinoTheme(
-          // Instead of letting Cupertino widgets auto-adapt to the Material
-          // theme (which is green), this app will use a different theme
-          // for Cupertino (which is blue by default).
-          data: const CupertinoThemeData(),
-          child: Material(child: child),
-        );
-      },
-      home: const PlatformAdaptingHomePage(),
-    );
+void setupWindow() {
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    WidgetsFlutterBinding.ensureInitialized();
+    setWindowTitle('Form Samples');
+    setWindowMinSize(const Size(windowWidth, windowHeight));
+    setWindowMaxSize(const Size(windowWidth, windowHeight));
+    getCurrentScreen().then((screen) {
+      setWindowFrame(Rect.fromCenter(
+        center: screen!.frame.center,
+        width: windowWidth,
+        height: windowHeight,
+      ));
+    });
   }
 }
 
-// Shows a different type of scaffold depending on the platform.
-//
-// This file has the most amount of non-sharable code since it behaves the most
-// differently between the platforms.
-//
-// These differences are also subjective and have more than one 'right' answer
-// depending on the app and content.
-class PlatformAdaptingHomePage extends StatefulWidget {
-  const PlatformAdaptingHomePage({super.key});
+final demos = [
+  Demo(
+    name: 'Sign in yah',
+    route: '/signin_http',
+    builder: (context) => SignInHttpDemo(
+      // This sample uses a mock HTTP client.
+      httpClient: mockClient,
+    ),
+  ),
+  Demo(
+    name: 'Profil kamu',
+    route: '/autofill',
+    builder: (context) => const AutofillDemo(),
+  ),
+  Demo(
+    name: 'Form widgets',
+    route: '/form_widgets',
+    builder: (context) => const FormWidgetsDemo(),
+  ),
+  Demo(
+    name: 'Validation',
+    route: '/validation',
+    builder: (context) => const FormValidationDemo(),
+  ),
+];
 
-  @override
-  State<PlatformAdaptingHomePage> createState() =>
-      _PlatformAdaptingHomePageState();
-}
+class FormApp extends StatelessWidget {
+  const FormApp({super.key});
 
-class _PlatformAdaptingHomePageState extends State<PlatformAdaptingHomePage> {
-  // This app keeps a global key for the songs tab because it owns a bunch of
-  // data. Since changing platform re-parents those tabs into different
-  // scaffolds, keeping a global key to it lets this app keep that tab's data as
-  // the platform toggles.
-  //
-  // This isn't needed for apps that doesn't toggle platforms while running.
-  final songsTabKey = GlobalKey();
-
-  // In Material, this app uses the hamburger menu paradigm and flatly lists
-  // all 4 possible tabs. This drawer is injected into the songs tab which is
-  // actually building the scaffold around the drawer.
-  Widget _buildAndroidHomePage(BuildContext context) {
-    return SongsTab(
-      key: songsTabKey,
-      androidDrawer: _AndroidDrawer(),
-    );
-  }
-
-  // On iOS, the app uses a bottom tab paradigm. Here, each tab view sits inside
-  // a tab in the tab scaffold. The tab scaffold also positions the tab bar
-  // in a row at the bottom.
-  //
-  // An important thing to note is that while a Material Drawer can display a
-  // large number of items, a tab bar cannot. To illustrate one way of adjusting
-  // for this, the app folds its fourth tab (the settings page) into the
-  // third tab. This is a common pattern on iOS.
-  //tampilan menu
-  Widget _buildIosHomePage(BuildContext context) {
-    return CupertinoTabScaffold(
-      tabBar: CupertinoTabBar(
-        items: const [
-          BottomNavigationBarItem(
-            label: SongsTab.title,
-            icon: SongsTab.androidIcon,
-          ),
-          BottomNavigationBarItem(
-            label: NewsTab.title,
-            icon: NewsTab.iosIcon,
-          ),
-          BottomNavigationBarItem(
-            label: ProfileTab.title,
-            icon: ProfileTab.iosIcon,
-          ),
-        ],
-      ),
-      tabBuilder: (context, index) {
-        switch (index) {
-          case 0:
-            return CupertinoTabView(
-              defaultTitle: SongsTab.title,
-              builder: (context) => SongsTab(key: songsTabKey),
-            );
-          case 1:
-            return CupertinoTabView(
-              defaultTitle: NewsTab.title,
-              builder: (context) => const NewsTab(),
-            );
-          case 2:
-            return CupertinoTabView(
-              defaultTitle: ProfileTab.title,
-              builder: (context) => const ProfileTab(),
-            );
-          default:
-            assert(false, 'Unexpected tab');
-            return const SizedBox.shrink();
-        }
-      },
-    );
-  }
-
-  @override
-  Widget build(context) {
-    return PlatformWidget(
-      androidBuilder: _buildAndroidHomePage,
-      iosBuilder: _buildIosHomePage,
-    );
-  }
-}
-
-class _AndroidDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Drawer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(color: Colors.green),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: Icon(
-                Icons.account_circle,
-                color: Colors.green.shade800,
-                size: 96,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: SongsTab.androidIcon,
-            title: const Text(SongsTab.title),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            leading: NewsTab.androidIcon,
-            title: const Text(NewsTab.title),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push<void>(context,
-                  MaterialPageRoute(builder: (context) => const NewsTab()));
-            },
-          ),
-          ListTile(
-            leading: ProfileTab.androidIcon,
-            title: const Text(ProfileTab.title),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push<void>(context,
-                  MaterialPageRoute(builder: (context) => const ProfileTab()));
-            },
-          ),
-          // Long drawer contents are often segmented.
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Divider(),
-          ),
-          ListTile(
-            leading: SettingsTab.androidIcon,
-            title: const Text(SettingsTab.title),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push<void>(context,
-                  MaterialPageRoute(builder: (context) => const SettingsTab()));
-            },
-          ),
-        ],
+    return MaterialApp(
+      title: 'Form Samples',
+      theme: ThemeData(primarySwatch: Colors.teal),
+      routes: Map.fromEntries(demos.map((d) => MapEntry(d.route, d.builder))),
+      home: const HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Form Samples Ubharajaya'),
+      ),
+      body: ListView(
+        children: [...demos.map((d) => DemoTile(demo: d))],
       ),
     );
   }
+}
+
+class DemoTile extends StatelessWidget {
+  final Demo? demo;
+
+  const DemoTile({this.demo, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(demo!.name),
+      onTap: () {
+        Navigator.pushNamed(context, demo!.route);
+      },
+    );
+  }
+}
+
+class Demo {
+  final String name;
+  final String route;
+  final WidgetBuilder builder;
+
+  const Demo({required this.name, required this.route, required this.builder});
 }
